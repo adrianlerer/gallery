@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding: 16px; }
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #1e293b; }
+.logo { font-size: 28px; }
+.title { font-size: 18px; font-weight: 700; color: #f59e0b; }
+.subtitle { font-size: 12px; color: #64748b; }
+.role-badge { display: inline-flex; align-items: center; gap: 6px; background: #1e293b; border: 1px solid #f59e0b33; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #f59e0b; font-weight: 600; margin-bottom: 16px; }
+.role-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.role-btn { flex: 1; min-width: 80px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 10px 8px; text-align: center; cursor: pointer; font-size: 13px; color: #94a3b8; transition: all 0.15s; }
+.role-btn:hover { border-color: #f59e0b66; color: #f59e0b; }
+.role-btn.active { background: #f59e0b15; border-color: #f59e0b; color: #f59e0b; font-weight: 600; }
+.role-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.stat { background: #1e293b; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #334155; }
+.stat-value { font-size: 24px; font-weight: 700; color: #f59e0b; }
+.stat-label { font-size: 11px; color: #64748b; margin-top: 2px; }
+.section-title { font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+.card { background: #1e293b; border-radius: 12px; padding: 16px; margin-bottom: 10px; border: 1px solid #334155; }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.card-date { font-size: 12px; color: #f59e0b; font-weight: 600; }
+.card-context { font-size: 11px; color: #475569; background: #0f172a; padding: 2px 8px; border-radius: 20px; }
+.card-emotion { font-size: 14px; color: #cbd5e1; margin-bottom: 6px; font-weight: 500; }
+.card-notes { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+.intensity-bar { display: flex; gap: 4px; margin-top: 8px; }
+.intensity-dot { width: 10px; height: 10px; border-radius: 50%; background: #334155; }
+.i1 .intensity-dot:nth-child(-n+1) { background: #22c55e; }
+.i2 .intensity-dot:nth-child(-n+2) { background: #84cc16; }
+.i3 .intensity-dot:nth-child(-n+3) { background: #f59e0b; }
+.i4 .intensity-dot:nth-child(-n+4) { background: #f97316; }
+.i5 .intensity-dot:nth-child(-n+5) { background: #ef4444; }
+.patterns { background: #1e293b; border-radius: 12px; padding: 16px; border: 1px solid #334155; margin-bottom: 12px; }
+.pattern-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #0f172a; }
+.pattern-row:last-child { border-bottom: none; }
+.pattern-label { font-size: 13px; color: #cbd5e1; }
+.pattern-val { font-size: 13px; color: #f59e0b; font-weight: 600; }
+.empty { text-align: center; padding: 40px 20px; color: #475569; font-size: 14px; line-height: 1.7; }
+.hint { font-size: 12px; color: #334155; margin-top: 8px; }
+pre { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-size: 11px; color: #94a3b8; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto; }
+.tag { background: #f59e0b15; color: #f59e0b; padding: 2px 8px; border-radius: 20px; font-size: 11px; border: 1px solid #f59e0b33; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">⚽</div>
+  <div>
+    <div class="title">FairPlay</div>
+    <div class="subtitle">Entrenamiento Mental Deportivo</div>
+  </div>
+</div>
+<div id="root"><div class="empty">Cargando...</div></div>
+
+<script>
+const EMOTIONS_KEY = 'fairplay_emotions';
+const ROLE_KEY     = 'fairplay_role';
+
+const ROLE_META = {
+  jugador:     { label: 'Jugador/a',    icon: '🏃', desc: '8-17 anos' },
+  padre:       { label: 'Padre/Madre',  icon: '👨‍👩‍👧', desc: 'Acompanamiento' },
+  entrenador:  { label: 'Entrenador/a', icon: '📋', desc: 'Preparacion mental' }
+};
+
+const CONTEXT_LABELS = {
+  'pre-partido':    'Pre-partido',
+  'post-partido':   'Post-partido',
+  'entrenamiento':  'Entrenamiento',
+  'otro':           'Otro'
+};
+
+const INTENSITY_LABELS = ['', 'Muy leve', 'Leve', 'Moderado', 'Intenso', 'Muy intenso'];
+
+function loadEmotions() {
+  try { return JSON.parse(localStorage.getItem(EMOTIONS_KEY) || '[]'); } catch { return []; }
+}
+function saveEmotions(list) { localStorage.setItem(EMOTIONS_KEY, JSON.stringify(list)); }
+function loadRole() { return localStorage.getItem(ROLE_KEY) || null; }
+function saveRole(r) { localStorage.setItem(ROLE_KEY, r); }
+
+function parseDate(d) {
+  if (!d || d === 'today') return new Date().toISOString().split('T')[0];
+  if (d === 'yesterday') { const x = new Date(); x.setDate(x.getDate() - 1); return x.toISOString().split('T')[0]; }
+  return d;
+}
+
+function handleAction(data) {
+  const action = data.action || '';
+
+  /* ── set_role ── */
+  if (action === 'set_role') {
+    const r = (data.role || '').toLowerCase();
+    if (!ROLE_META[r]) {
+      renderView();
+      return { error: 'Rol invalido. Usar: jugador, padre o entrenador.' };
+    }
+    saveRole(r);
+    renderView();
+    return { result: `Rol establecido: ${ROLE_META[r].label}. Listo para acompanarte.` };
+  }
+
+  /* ── get_role ── */
+  if (action === 'get_role') {
+    const r = loadRole();
+    renderView();
+    if (!r) return { result: 'No hay rol activo. Indicar: jugador, padre o entrenador.' };
+    return { result: `Rol activo: ${ROLE_META[r].label}.`, role: r };
+  }
+
+  /* ── log_emotion ── */
+  if (action === 'log_emotion') {
+    const list = loadEmotions();
+    const item = {
+      id:        Date.now().toString(),
+      date:      parseDate(data.date),
+      context:   data.context || 'otro',
+      emotion:   data.emotion || '',
+      intensity: Math.min(5, Math.max(1, parseInt(data.intensity) || 3)),
+      notes:     data.notes || '',
+      createdAt: new Date().toISOString()
+    };
+    list.unshift(item);
+    saveEmotions(list);
+    renderView();
+    return {
+      result: `Emocion registrada el ${item.date}: ${item.emotion} (intensidad ${item.intensity}/5, contexto: ${CONTEXT_LABELS[item.context] || item.context}). Total: ${list.length} registro(s).`
+    };
+  }
+
+  /* ── get_emotions ── */
+  if (action === 'get_emotions') {
+    const list = loadEmotions();
+    const days = parseInt(data.days) || 30;
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+    const filtered = list.filter(i => new Date(i.date) >= cutoff);
+    renderView();
+    return {
+      result: `${filtered.length} registro(s) emocionales en los ultimos ${days} dias (total historico: ${list.length}).`,
+      emotions: filtered
+    };
+  }
+
+  /* ── get_patterns ── */
+  if (action === 'get_patterns') {
+    const list = loadEmotions();
+    if (list.length === 0) {
+      renderView();
+      return { result: 'Sin registros emocionales todavia. Empeza registrando como te sentis antes y despues de un partido.' };
+    }
+    const byContext = {};
+    const byEmotion = {};
+    let totalIntensity = 0;
+    list.forEach(i => {
+      byContext[i.context]   = (byContext[i.context] || 0) + 1;
+      byEmotion[i.emotion]   = (byEmotion[i.emotion] || 0) + 1;
+      totalIntensity        += i.intensity;
+    });
+    const topContext = Object.entries(byContext).sort((a,b) => b[1]-a[1])[0];
+    const topEmotion = Object.entries(byEmotion).sort((a,b) => b[1]-a[1])[0];
+    const avgIntensity = (totalIntensity / list.length).toFixed(1);
+    renderPatterns({ byContext, byEmotion, avgIntensity, total: list.length });
+    return {
+      result: `Patrones en ${list.length} registros: contexto mas frecuente "${CONTEXT_LABELS[topContext[0]] || topContext[0]}" (${topContext[1]} veces), emocion mas frecuente "${topEmotion[0]}" (${topEmotion[1]} veces), intensidad media ${avgIntensity}/5.`,
+      patterns: { byContext, byEmotion, avgIntensity, total: list.length }
+    };
+  }
+
+  /* ── export_log ── */
+  if (action === 'export_log') {
+    const list = loadEmotions();
+    const role = loadRole();
+    let txt = 'REGISTRO EMOCIONAL - FairPlay Deportivo\n';
+    txt += '=========================================\n';
+    txt += `Exportado: ${new Date().toLocaleString('es-AR')}\n`;
+    if (role) txt += `Rol: ${ROLE_META[role]?.label || role}\n`;
+    txt += `Total: ${list.length} registro(s)\n\n`;
+    list.forEach((e, i) => {
+      txt += `--- Registro ${i+1} ---\n`;
+      txt += `Fecha: ${e.date}\n`;
+      txt += `Contexto: ${CONTEXT_LABELS[e.context] || e.context}\n`;
+      txt += `Emocion: ${e.emotion}\n`;
+      txt += `Intensidad: ${INTENSITY_LABELS[e.intensity]} (${e.intensity}/5)\n`;
+      if (e.notes) txt += `Notas: ${e.notes}\n`;
+      txt += '\n';
+    });
+    renderExport(txt);
+    return {
+      result: `Registro exportado con ${list.length} entrada(s). Listo para compartir con psicologo o entrenador.`,
+      export_text: txt
+    };
+  }
+
+  renderView();
+  return { error: 'Accion no reconocida: ' + action };
+}
+
+/* ── RENDERS ── */
+
+function renderView() {
+  const list    = loadEmotions();
+  const role    = loadRole();
+  const thisWeek = list.filter(i => {
+    const d = new Date(i.date), n = new Date();
+    n.setDate(n.getDate() - 7);
+    return d >= n;
+  }).length;
+  const avg = list.length
+    ? (list.reduce((s,i) => s + i.intensity, 0) / list.length).toFixed(1)
+    : '0';
+
+  /* role selector */
+  let html = '<div class="role-selector">';
+  Object.entries(ROLE_META).forEach(([key, m]) => {
+    const active = role === key ? ' active' : '';
+    html += `<div class="role-btn${active}"><span class="role-icon">${m.icon}</span>${m.label}</div>`;
+  });
+  html += '</div>';
+
+  if (role) {
+    html += `<div class="role-badge">${ROLE_META[role].icon} ${ROLE_META[role].label}</div>`;
+  }
+
+  /* stats */
+  html += `<div class="stats">
+    <div class="stat"><div class="stat-value">${list.length}</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-value">${thisWeek}</div><div class="stat-label">Esta semana</div></div>
+    <div class="stat"><div class="stat-value">${avg}</div><div class="stat-label">Intens. media</div></div>
+  </div>`;
+
+  if (list.length === 0) {
+    html += `<div class="empty">
+      Sin registros emocionales todavia.<br>
+      <small>Pedi al asistente que registre como te sentis antes o despues de un partido.</small>
+    </div>`;
+  } else {
+    html += '<div class="section-title">Registros recientes</div>';
+    list.slice(0, 15).forEach(e => {
+      html += `<div class="card">
+        <div class="card-header">
+          <span class="card-date">📅 ${e.date}</span>
+          <span class="card-context">${CONTEXT_LABELS[e.context] || e.context}</span>
+        </div>
+        <div class="card-emotion">${e.emotion}</div>
+        ${e.notes ? `<div class="card-notes">${e.notes}</div>` : ''}
+        <div class="intensity-bar i${e.intensity}">
+          <div class="intensity-dot"></div>
+          <div class="intensity-dot"></div>
+          <div class="intensity-dot"></div>
+          <div class="intensity-dot"></div>
+          <div class="intensity-dot"></div>
+          <span style="font-size:11px;color:#64748b;margin-left:6px;">${INTENSITY_LABELS[e.intensity]}</span>
+        </div>
+      </div>`;
+    });
+  }
+
+  document.getElementById('root').innerHTML = html;
+}
+
+function renderPatterns(p) {
+  const sortedCtx = Object.entries(p.byContext).sort((a,b) => b[1]-a[1]);
+  const sortedEmo = Object.entries(p.byEmotion).sort((a,b) => b[1]-a[1]);
+
+  let html = `<div class="section-title">Patrones emocionales (${p.total} registros)</div>`;
+  html += '<div class="patterns">';
+  html += `<div class="pattern-row"><span class="pattern-label">Intensidad media</span><span class="pattern-val">${p.avgIntensity}/5</span></div>`;
+  sortedCtx.forEach(([ctx, n]) => {
+    html += `<div class="pattern-row"><span class="pattern-label">${CONTEXT_LABELS[ctx] || ctx}</span><span class="pattern-val">${n}x</span></div>`;
+  });
+  html += '</div>';
+
+  html += '<div class="section-title" style="margin-top:16px">Emociones mas frecuentes</div>';
+  html += '<div class="patterns">';
+  sortedEmo.slice(0, 6).forEach(([emo, n]) => {
+    html += `<div class="pattern-row"><span class="pattern-label">${emo}</span><span class="pattern-val">${n}x</span></div>`;
+  });
+  html += '</div>';
+
+  document.getElementById('root').innerHTML = html;
+}
+
+function renderExport(txt) {
+  document.getElementById('root').innerHTML = `
+    <div class="section-title">Exportar para psicologo / entrenador</div>
+    <pre>${txt.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>`;
+}
+
+/* ── Entry point requerido por AI Edge Gallery ── */
+window['ai_edge_gallery_get_result'] = async (dataStr) => {
+  try {
+    const data   = JSON.parse(dataStr);
+    const result = handleAction(data);
+    return JSON.stringify(result);
+  } catch (e) {
+    renderView();
+    return JSON.stringify({ error: 'Error: ' + e.message });
+  }
+};
+
+/* Render inicial */
+renderView();
+</script>
+</body>
+</html>

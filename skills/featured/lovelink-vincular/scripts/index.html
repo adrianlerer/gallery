@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0a0f; color: #e2d8e8; padding: 16px; }
+.header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #2d1f2d; }
+.logo { font-size: 22px; }
+.title { font-size: 18px; font-weight: 700; color: #f472b6; }
+.subtitle { font-size: 12px; color: #6b4f6b; }
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.stat { background: #1a0f1a; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #3d2040; }
+.stat-value { font-size: 24px; font-weight: 700; color: #f472b6; }
+.stat-label { font-size: 11px; color: #6b4f6b; margin-top: 2px; }
+.card { background: #1a0f1a; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid #3d2040; }
+.card-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.card-date { font-size: 12px; color: #f472b6; font-weight: 600; }
+.mood-badge { font-size: 16px; line-height: 1; }
+.card-text { font-size: 14px; color: #c4afc4; line-height: 1.5; margin-bottom: 10px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { background: #2d1040; color: #c084fc; padding: 3px 8px; border-radius: 20px; font-size: 11px; }
+.empty { text-align: center; padding: 40px 20px; color: #4a354a; font-size: 14px; }
+.section-title { font-size: 13px; font-weight: 600; color: #6b4f6b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+.patterns { background: #1a0f1a; border-radius: 12px; padding: 16px; border: 1px solid #3d2040; margin-bottom: 12px; }
+.pattern-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.pattern-label { font-size: 12px; color: #8a6f8a; width: 80px; flex-shrink: 0; }
+.bar-bg { flex: 1; background: #2d1f2d; border-radius: 4px; height: 8px; }
+.bar-fill { background: linear-gradient(90deg, #be185d, #f472b6); border-radius: 4px; height: 8px; transition: width 0.3s; }
+.pattern-count { font-size: 12px; color: #6b4f6b; width: 24px; text-align: right; }
+.mood-bar { display: flex; gap: 2px; align-items: flex-end; height: 40px; margin-bottom: 12px; }
+.mood-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mood-block { width: 100%; border-radius: 2px; }
+.mood-col-label { font-size: 9px; color: #4a354a; }
+pre { background: #0f0a0f; border: 1px solid #3d2040; border-radius: 8px; padding: 12px; font-size: 11px; color: #8a6f8a; white-space: pre-wrap; word-break: break-all; }
+.avg-line { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.avg-mood { font-size: 28px; }
+.avg-desc { font-size: 13px; color: #8a6f8a; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">💗</div>
+  <div>
+    <div class="title">LoveLink</div>
+    <div class="subtitle">Diario Vincular</div>
+  </div>
+</div>
+<div id="root"><div class="empty">Cargando...</div></div>
+
+<script>
+const KEY = 'lovelink_journal';
+const MOOD_EMOJI = {1:'😔',2:'😕',3:'😐',4:'🙂',5:'😊'};
+const MOOD_LABEL = {1:'Muy mal',2:'Mal',3:'Regular',4:'Bien',5:'Muy bien'};
+const MOOD_COLOR = {1:'#7f1d1d',2:'#9a3412',3:'#713f12',4:'#14532d',5:'#166534'};
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
+}
+function save(list) { localStorage.setItem(KEY, JSON.stringify(list)); }
+
+function fmt(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function handleAction(data) {
+  const list = load();
+
+  if (data.action === 'log_journal') {
+    const mood = Math.min(5, Math.max(1, parseInt(data.mood) || 3));
+    const item = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split('T')[0],
+      mood,
+      text: data.text || '',
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      createdAt: new Date().toISOString()
+    };
+    list.unshift(item);
+    save(list);
+    renderView();
+    return { result: `Entrada registrada. Estado de animo: ${MOOD_EMOJI[mood]} ${MOOD_LABEL[mood]}. Total en diario: ${list.length} entrada(s).` };
+  }
+
+  if (data.action === 'get_journal') {
+    const days = parseInt(data.days) || 30;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    const filtered = list.filter(e => e.date >= cutoffStr);
+    renderView();
+    const avgMood = filtered.length ? (filtered.reduce((s,e) => s + e.mood, 0) / filtered.length).toFixed(1) : null;
+    return {
+      result: `Encontre ${filtered.length} entrada(s) en los ultimos ${days} dias (total historico: ${list.length}). Estado de animo promedio: ${avgMood ? avgMood + '/5' : 'sin datos'}.`,
+      entries: filtered
+    };
+  }
+
+  if (data.action === 'get_patterns') {
+    if (!list.length) {
+      renderView();
+      return { result: 'No hay entradas suficientes para analizar patrones. Registre al menos 3 dias de diario.' };
+    }
+    // Tag frequency
+    const tagCount = {};
+    list.forEach(e => e.tags.forEach(t => { tagCount[t] = (tagCount[t]||0)+1; }));
+    // Mood by weekday
+    const byDay = {0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[]};
+    list.forEach(e => {
+      const day = new Date(e.date + 'T12:00:00').getDay();
+      byDay[day].push(e.mood);
+    });
+    const dayAvg = Object.entries(byDay).map(([d, moods]) => ({
+      day: d,
+      avg: moods.length ? moods.reduce((s,m)=>s+m,0)/moods.length : null,
+      n: moods.length
+    }));
+    // Overall avg
+    const overall = (list.reduce((s,e)=>s+e.mood,0)/list.length).toFixed(1);
+    // Trend (last 7 vs before)
+    const last7 = list.filter(e => {
+      const c = new Date(); c.setDate(c.getDate()-7);
+      return e.date >= c.toISOString().split('T')[0];
+    });
+    const before = list.filter(e => {
+      const c = new Date(); c.setDate(c.getDate()-7);
+      return e.date < c.toISOString().split('T')[0];
+    });
+    let trend = 'estable';
+    if (last7.length >= 2 && before.length >= 2) {
+      const a7 = last7.reduce((s,e)=>s+e.mood,0)/last7.length;
+      const ab = before.reduce((s,e)=>s+e.mood,0)/before.length;
+      if (a7 - ab > 0.4) trend = 'mejorando';
+      else if (ab - a7 > 0.4) trend = 'bajando';
+    }
+    const topTags = Object.entries(tagCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    renderPatterns(tagCount, dayAvg, overall, trend, list.length);
+    return {
+      result: `Patrones de ${list.length} entrada(s). Estado promedio: ${overall}/5 (${MOOD_LABEL[Math.round(parseFloat(overall))] || ''}). Tendencia ultimos 7 dias: ${trend}. Emociones mas frecuentes: ${topTags.map(([t,c])=>`${t} (${c}x)`).join(', ') || 'sin etiquetas'}.`,
+      overall_avg: parseFloat(overall),
+      trend,
+      top_tags: topTags.map(([tag,count])=>({tag,count})),
+      total_entries: list.length
+    };
+  }
+
+  if (data.action === 'export_journal') {
+    let txt = 'DIARIO VINCULAR — LoveLink\n==========================\n';
+    txt += `Exportado: ${new Date().toLocaleString('es-AR')}\nTotal: ${list.length} entrada(s)\n\n`;
+    list.forEach((e, i) => {
+      txt += `--- Entrada ${i+1} ---\nFecha: ${e.date}\nEstado: ${MOOD_EMOJI[e.mood]} ${MOOD_LABEL[e.mood]} (${e.mood}/5)\n`;
+      if (e.text) txt += `Nota: ${e.text}\n`;
+      if (e.tags.length) txt += `Etiquetas: ${e.tags.join(', ')}\n`;
+      txt += '\n';
+    });
+    renderExport(txt);
+    return { result: `Diario exportado con ${list.length} entrada(s). Compartilo con tu profesional de salud.`, export_text: txt };
+  }
+
+  renderView();
+  return { error: 'Accion no reconocida: ' + (data.action || 'ninguna') };
+}
+
+function renderView() {
+  const list = load();
+  const thisWeek = list.filter(e => {
+    const c = new Date(); c.setDate(c.getDate()-7);
+    return e.date >= c.toISOString().split('T')[0];
+  }).length;
+  const avg = list.length ? (list.reduce((s,e)=>s+e.mood,0)/list.length).toFixed(1) : '---';
+
+  let html = `<div class="stats">
+    <div class="stat"><div class="stat-value">${list.length}</div><div class="stat-label">Entradas</div></div>
+    <div class="stat"><div class="stat-value">${thisWeek}</div><div class="stat-label">Esta semana</div></div>
+    <div class="stat"><div class="stat-value">${avg}</div><div class="stat-label">Animo prom.</div></div>
+  </div>`;
+
+  if (!list.length) {
+    html += '<div class="empty">Sin entradas en el diario.<br><small>Pedile a LoveLink que registre como te sientes hoy.</small></div>';
+  } else {
+    html += '<div class="section-title">Entradas recientes</div>';
+    list.slice(0, 15).forEach(e => {
+      html += `<div class="card">
+        <div class="card-meta">
+          <div class="card-date">${fmt(e.date)}</div>
+          <div class="mood-badge" title="${MOOD_LABEL[e.mood]}">${MOOD_EMOJI[e.mood]}</div>
+        </div>
+        ${e.text ? `<div class="card-text">${e.text}</div>` : ''}
+        ${e.tags.length ? `<div class="tags">${e.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>` : ''}
+      </div>`;
+    });
+  }
+  document.getElementById('root').innerHTML = html;
+}
+
+function renderPatterns(tagCount, dayAvg, overall, trend, total) {
+  const dayNames = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+  const trendIcon = {mejorando:'↗', bajando:'↘', estable:'→'}[trend] || '';
+  const topTags = Object.entries(tagCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxTag = topTags.length ? topTags[0][1] : 1;
+
+  let html = `<div class="patterns">
+    <div class="section-title">Estado de animo promedio</div>
+    <div class="avg-line">
+      <div class="avg-mood">${MOOD_EMOJI[Math.round(parseFloat(overall))] || '😐'}</div>
+      <div>
+        <div style="font-size:20px;font-weight:700;color:#f472b6">${overall}<span style="font-size:13px;color:#6b4f6b">/5</span></div>
+        <div class="avg-desc">${total} entradas &bull; tendencia: ${trendIcon} ${trend}</div>
+      </div>
+    </div>`;
+
+  if (dayAvg.some(d => d.avg !== null)) {
+    html += `<div class="section-title" style="margin-top:12px">Por dia de la semana</div>
+    <div class="mood-bar">`;
+    dayAvg.forEach(({day, avg}) => {
+      const h = avg ? Math.round((avg/5)*36) : 2;
+      const color = avg ? `hsl(${(avg-1)*27}, 60%, 45%)` : '#2d1f2d';
+      html += `<div class="mood-col">
+        <div class="mood-block" style="height:${h}px;background:${color}"></div>
+        <div class="mood-col-label">${dayNames[day]}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (topTags.length) {
+    html += `<div class="section-title" style="margin-top:12px">Emociones frecuentes</div>`;
+    topTags.forEach(([tag, count]) => {
+      const pct = Math.round((count/maxTag)*100);
+      html += `<div class="pattern-row">
+        <div class="pattern-label">${tag}</div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="pattern-count">${count}</div>
+      </div>`;
+    });
+  }
+
+  html += '</div>';
+  document.getElementById('root').innerHTML = html;
+}
+
+function renderExport(txt) {
+  document.getElementById('root').innerHTML = `
+    <div class="section-title">Exportar para profesional</div>
+    <pre>${txt}</pre>`;
+}
+
+// Punto de entrada requerido por AI Edge Gallery
+window['ai_edge_gallery_get_result'] = async (dataStr) => {
+  try {
+    const data = JSON.parse(dataStr);
+    const result = handleAction(data);
+    return JSON.stringify(result);
+  } catch (e) {
+    renderView();
+    return JSON.stringify({ error: 'Error: ' + e.message });
+  }
+};
+
+// Render inicial cuando se abre el webview sin accion
+renderView();
+</script>
+</body>
+</html>

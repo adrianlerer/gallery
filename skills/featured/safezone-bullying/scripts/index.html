@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a1628; color: #e2e8f0; padding: 16px; }
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #1e3a5f; }
+.logo { width: 38px; height: 38px; background: linear-gradient(135deg, #1e88e5, #0d47a1); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.title { font-size: 18px; font-weight: 700; color: #4fc3f7; }
+.subtitle { font-size: 12px; color: #546e7a; }
+.role-badge { display: inline-flex; align-items: center; gap: 5px; background: #0d2137; border: 1px solid #1e3a5f; border-radius: 20px; padding: 4px 10px; font-size: 12px; color: #4fc3f7; margin-bottom: 16px; }
+.role-dot { width: 8px; height: 8px; border-radius: 50%; background: #4fc3f7; }
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.stat { background: #0d2137; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #1e3a5f; }
+.stat-value { font-size: 24px; font-weight: 700; color: #4fc3f7; }
+.stat-label { font-size: 11px; color: #546e7a; margin-top: 2px; }
+.card { background: #0d2137; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid #1e3a5f; }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.card-date { font-size: 12px; color: #4fc3f7; font-weight: 600; }
+.card-type { font-size: 11px; background: #0a1f35; color: #81d4fa; padding: 2px 8px; border-radius: 20px; border: 1px solid #1e3a5f; }
+.card-desc { font-size: 14px; color: #b0bec5; line-height: 1.5; margin-bottom: 10px; }
+.severity { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #78909c; }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.s1{background:#26a69a}.s2{background:#66bb6a}.s3{background:#ffa726}.s4{background:#ef5350}.s5{background:#b71c1c}
+.empty { text-align: center; padding: 40px 20px; color: #37474f; font-size: 14px; }
+.section-title { font-size: 12px; font-weight: 600; color: #37474f; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+.helpline-grid { display: grid; gap: 10px; margin-bottom: 20px; }
+.helpline { background: #0d2137; border: 1px solid #1e3a5f; border-radius: 10px; padding: 12px; }
+.helpline-number { font-size: 22px; font-weight: 700; color: #4fc3f7; margin-bottom: 2px; }
+.helpline-name { font-size: 13px; font-weight: 600; color: #e0e0e0; margin-bottom: 4px; }
+.helpline-desc { font-size: 12px; color: #78909c; line-height: 1.4; }
+.helpline-avail { font-size: 11px; color: #26a69a; margin-top: 4px; }
+.legal-card { background: #0d2137; border: 1px solid #1e3a5f; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.legal-title { font-size: 13px; font-weight: 700; color: #4fc3f7; margin-bottom: 4px; }
+.legal-desc { font-size: 12px; color: #90a4ae; line-height: 1.4; }
+pre { background: #060f1e; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px; font-size: 11px; color: #78909c; white-space: pre-wrap; word-break: break-all; }
+.role-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.role-btn { background: #0d2137; border: 1px solid #1e3a5f; border-radius: 10px; padding: 14px 10px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+.role-btn:hover { border-color: #4fc3f7; }
+.role-btn.active { border-color: #4fc3f7; background: #0a1f35; }
+.role-icon { font-size: 22px; margin-bottom: 4px; }
+.role-name { font-size: 13px; font-weight: 600; color: #e0e0e0; }
+.role-desc { font-size: 11px; color: #546e7a; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">🛡️</div>
+  <div>
+    <div class="title">SafeZone</div>
+    <div class="subtitle">Anti-bullying escolar · Argentina</div>
+  </div>
+</div>
+<div id="root"><div class="empty">Cargando...</div></div>
+
+<script>
+const KEY_SITUATIONS = 'sz_situations';
+const KEY_ROLE = 'sz_role';
+
+const ROLES = {
+  alumno:  { icon: '🧒', name: 'Alumno/a',         desc: '8-17 años' },
+  testigo: { icon: '👀', name: 'Testigo',           desc: 'Bystander' },
+  padre:   { icon: '👨‍👩‍👧', name: 'Padre/Madre',      desc: 'Familia' },
+  docente: { icon: '📚', name: 'Docente/Directivo', desc: 'Institución' },
+};
+
+const SEV_LABEL = ['','Muy leve','Leve','Moderado','Severo','Critico'];
+const SEV_CLASS = ['','s1','s2','s3','s4','s5'];
+
+const TYPE_LABEL = {
+  verbal:   'Verbal',
+  fisica:   'Física',
+  social:   'Social/Exclusion',
+  ciber:    'Ciberbullying',
+  prejuicio:'Por prejuicio',
+};
+
+function loadSituations() {
+  try { return JSON.parse(localStorage.getItem(KEY_SITUATIONS) || '[]'); } catch { return []; }
+}
+function saveSituations(list) { localStorage.setItem(KEY_SITUATIONS, JSON.stringify(list)); }
+
+function getRole() {
+  return localStorage.getItem(KEY_ROLE) || null;
+}
+function setRole(role) {
+  if (!ROLES[role]) return false;
+  localStorage.setItem(KEY_ROLE, role);
+  return true;
+}
+
+function parseDate(d) {
+  if (!d || d === 'today') return new Date().toISOString().split('T')[0];
+  if (d === 'yesterday') { const x = new Date(); x.setDate(x.getDate() - 1); return x.toISOString().split('T')[0]; }
+  return d;
+}
+
+function handleAction(data) {
+  // set_role
+  if (data.action === 'set_role') {
+    const role = (data.role || '').toLowerCase();
+    if (!ROLES[role]) {
+      return { error: 'Rol no valido. Usar: alumno, testigo, padre, docente.' };
+    }
+    setRole(role);
+    renderView('role');
+    return { result: `Rol establecido: ${ROLES[role].name}. Ahora puedo ayudarte como ${ROLES[role].name}.` };
+  }
+
+  // get_role
+  if (data.action === 'get_role') {
+    const role = getRole();
+    renderView(null);
+    if (!role) return { result: 'No hay rol activo. Por favor indica si eres alumno/a, testigo, padre/madre o docente.', role: null };
+    return { result: `Rol activo: ${ROLES[role].name}.`, role };
+  }
+
+  // log_situation
+  if (data.action === 'log_situation') {
+    const list = loadSituations();
+    const type = data.type || 'verbal';
+    const item = {
+      id: Date.now().toString(),
+      date: parseDate(data.date),
+      description: data.description || '',
+      type: TYPE_LABEL[type] || type,
+      typeId: type,
+      severity: Math.min(5, Math.max(1, parseInt(data.severity) || 3)),
+      role: getRole() || 'alumno',
+      createdAt: new Date().toISOString(),
+    };
+    list.unshift(item);
+    saveSituations(list);
+    renderView(null);
+    return { result: `Situacion registrada el ${item.date}. Tipo: ${item.type}. Severidad: ${SEV_LABEL[item.severity]}. Total registrado: ${list.length}.` };
+  }
+
+  // get_situations
+  if (data.action === 'get_situations') {
+    const list = loadSituations();
+    const days = parseInt(data.days) || 30;
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+    const filtered = list.filter(i => new Date(i.date) >= cutoff);
+    renderView(null);
+    if (filtered.length === 0) {
+      return { result: `No hay situaciones registradas en los ultimos ${days} dias.`, situations: [] };
+    }
+    const summary = filtered.map(s =>
+      `[${s.date}] ${s.type} - Sev. ${s.severity}/5 - ${s.description}`
+    ).join('\n');
+    return {
+      result: `Encontre ${filtered.length} situacion(es) en los ultimos ${days} dias:\n${summary}`,
+      situations: filtered,
+    };
+  }
+
+  // export_situations
+  if (data.action === 'export_situations') {
+    const list = loadSituations();
+    let txt = 'REGISTRO DE SITUACIONES — SafeZone\n=====================================\n';
+    txt += `Exportado: ${new Date().toLocaleString('es-AR')}\n`;
+    txt += `Total: ${list.length} situacion(es)\n\n`;
+    list.forEach((s, i) => {
+      txt += `--- Situacion ${i + 1} ---\n`;
+      txt += `Fecha: ${s.date}\n`;
+      txt += `Tipo: ${s.type}\n`;
+      txt += `Severidad: ${SEV_LABEL[s.severity]} (${s.severity}/5)\n`;
+      txt += `Descripcion: ${s.description}\n\n`;
+    });
+    txt += '=====================================\n';
+    txt += 'Lineas de ayuda: 102 (NNyA) | 135 (crisis) | 137 (violencia familiar)\n';
+    txt += 'Marco legal: Ley 26.892, Ley 26.061, CDN\n';
+    renderExport(txt);
+    return { result: `Registro exportado con ${list.length} situacion(es). Puede presentarlo a la institucion escolar o autoridades.`, export_text: txt };
+  }
+
+  // get_resources
+  if (data.action === 'get_resources') {
+    renderResources();
+    return {
+      result: [
+        'LINEAS DE AYUDA (gratuitas, 24h):',
+        '  102 — NNyA: escucha, orientacion, proteccion de derechos',
+        '  135 — CAPS: crisis emocional, ideacion suicida',
+        '  137 — Violencia familiar: brigadas moviles',
+        '  911 — Emergencias: riesgo inmediato',
+        '  0800 33 347225 — Unidad Fiscal CABA (ciberbullying)',
+        '',
+        'MARCO LEGAL ARGENTINO:',
+        '  Ley 26.892 (2013): convivencia escolar, rechazo a toda violencia incluso virtual',
+        '  Ley 26.061 (2005): proteccion integral NNyA, Linea 102',
+        '  Res. 1473/MEDGC/25 (CABA): protocolo obligatorio anti-bullying',
+        '  Ley 23.592: actos discriminatorios',
+        '  CDN: arts. 19 (proteccion), 28 (educacion), 12 (ser escuchado)',
+        '',
+        'Esta informacion es orientativa. Consulte con profesionales o autoridades escolares.',
+      ].join('\n'),
+    };
+  }
+
+  renderView(null);
+  return { error: 'Accion no reconocida: ' + (data.action || 'ninguna') };
+}
+
+// ---- Render functions ----
+
+function renderView(highlight) {
+  const list = loadSituations();
+  const role = getRole();
+  const thisMonth = list.filter(i => {
+    const d = new Date(i.date), n = new Date();
+    return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+  }).length;
+  const avg = list.length ? (list.reduce((s, i) => s + i.severity, 0) / list.length).toFixed(1) : '0';
+
+  let html = '';
+
+  // Role badge
+  if (role) {
+    const r = ROLES[role];
+    html += `<div class="role-badge"><div class="role-dot"></div>${r.icon} ${r.name}</div>`;
+  } else {
+    html += `<div class="role-badge" style="color:#ef5350;border-color:#37474f">Sin rol activo — pedile al asistente que seleccione tu rol</div>`;
+  }
+
+  // Stats
+  html += `<div class="stats">
+    <div class="stat"><div class="stat-value">${list.length}</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-value">${thisMonth}</div><div class="stat-label">Este mes</div></div>
+    <div class="stat"><div class="stat-value">${avg}</div><div class="stat-label">Sev. media</div></div>
+  </div>`;
+
+  if (list.length === 0) {
+    html += '<div class="empty">Sin situaciones registradas.<br><small>Contale al asistente lo que paso para registrarlo.</small></div>';
+  } else {
+    html += '<div class="section-title">Situaciones recientes</div>';
+    list.slice(0, 12).forEach(s => {
+      html += `<div class="card">
+        <div class="card-header">
+          <div class="card-date">📅 ${s.date}</div>
+          <div class="card-type">${s.type}</div>
+        </div>
+        <div class="card-desc">${escHtml(s.description)}</div>
+        <div class="severity"><div class="dot ${SEV_CLASS[s.severity]}"></div>${SEV_LABEL[s.severity]}</div>
+      </div>`;
+    });
+  }
+
+  document.getElementById('root').innerHTML = html;
+}
+
+function renderResources() {
+  const helplines = [
+    { number: '102', name: 'Linea 102 — NNyA', desc: 'Escucha, contencion y proteccion de derechos para ninos, ninas y adolescentes.', avail: '24h gratuita y confidencial' },
+    { number: '135', name: 'Linea 135 — CAPS', desc: 'Centro de Asistencia al Suicida. Crisis emocional, ideacion suicida.', avail: '24h gratuita y confidencial' },
+    { number: '137', name: 'Linea 137', desc: 'Violencia familiar. Brigadas moviles de intervencion urgente.', avail: '24h gratuita' },
+    { number: '911', name: 'Emergencias', desc: 'Policia, bomberos, emergencias medicas. Riesgo inmediato para la vida.', avail: '24h' },
+    { number: '0800 33 347225', name: 'Unidad Fiscal CABA', desc: 'Denuncias por ciberbullying y delitos informaticos contra NNyA en Ciudad de Buenos Aires.', avail: 'Horario de oficina' },
+  ];
+
+  const legal = [
+    { title: 'Ley 26.892 (2013)', desc: 'Convivencia escolar. Rechazo a toda violencia incluyendo la virtual. Acuerdos de convivencia obligatorios.' },
+    { title: 'Ley 26.061 (2005)', desc: 'Proteccion integral NNyA. Interes superior del nino, derecho a ser escuchado, Linea 102.' },
+    { title: 'Res. 1473/MEDGC/25 (CABA)', desc: 'Protocolo anti-bullying obligatorio. Incluye ciberbullying, EOE, acciones diferenciadas y Unidad Fiscal.' },
+    { title: 'CDN (rango constitucional)', desc: 'Arts. 19 (proteccion contra violencia), 28 (derecho a educacion), 12 (ser escuchado).' },
+    { title: 'Ley 23.592', desc: 'Actos discriminatorios. Aplica al acoso por etnia, religion, identidad de genero, discapacidad.' },
+  ];
+
+  let html = '<div class="section-title">Lineas de ayuda</div><div class="helpline-grid">';
+  helplines.forEach(h => {
+    html += `<div class="helpline">
+      <div class="helpline-number">${h.number}</div>
+      <div class="helpline-name">${h.name}</div>
+      <div class="helpline-desc">${h.desc}</div>
+      <div class="helpline-avail">${h.avail}</div>
+    </div>`;
+  });
+  html += '</div><div class="section-title">Marco legal argentino</div>';
+  legal.forEach(l => {
+    html += `<div class="legal-card">
+      <div class="legal-title">${l.title}</div>
+      <div class="legal-desc">${l.desc}</div>
+    </div>`;
+  });
+
+  document.getElementById('root').innerHTML = html;
+}
+
+function renderExport(txt) {
+  document.getElementById('root').innerHTML = `
+    <div class="section-title">Exportar para escuela o denuncia</div>
+    <pre>${escHtml(txt)}</pre>`;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Punto de entrada requerido por AI Edge Gallery
+window['ai_edge_gallery_get_result'] = async (dataStr) => {
+  try {
+    const data = JSON.parse(dataStr);
+    const result = handleAction(data);
+    return JSON.stringify(result);
+  } catch (e) {
+    renderView(null);
+    return JSON.stringify({ error: 'Error: ' + e.message });
+  }
+};
+
+// Render inicial
+renderView(null);
+</script>
+</body>
+</html>
