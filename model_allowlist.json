@@ -1,6 +1,50 @@
 {
   "models": [
     {
+      "name": "Gemma-4-E2B-it",
+      "modelId": "litert-community/gemma-4-E2B-it-litert-lm",
+      "modelFile": "gemma-4-E2B-it-litert-lm.task",
+      "description": "Gemma 4 E2B Instruct — on-device multimodal model (text, image, audio). 2.58GB, 128K context window, 50+ tokens/sec on modern phones. Recommended model for AmparoIA.",
+      "sizeInBytes": 2707457024,
+      "estimatedPeakMemoryInBytes": 3221225472,
+      "version": "20260402",
+      "llmSupportImage": true,
+      "defaultConfig": {
+        "topK": 40,
+        "topP": 0.95,
+        "temperature": 0.7,
+        "maxTokens": 2048,
+        "accelerators": "gpu,cpu"
+      },
+      "taskTypes": [
+        "llm_chat",
+        "llm_prompt_lab",
+        "llm_ask_image"
+      ]
+    },
+    {
+      "name": "Gemma-4-E4B-it",
+      "modelId": "litert-community/gemma-4-E4B-it-litert-lm",
+      "modelFile": "gemma-4-E4B-it-litert-lm.task",
+      "description": "Gemma 4 E4B Instruct — higher capability on-device model. 4.5B effective parameters, 128K context, multimodal. Requires 6GB+ RAM. Best quality for AmparoIA on flagship devices.",
+      "sizeInBytes": 4831838208,
+      "estimatedPeakMemoryInBytes": 6442450944,
+      "version": "20260402",
+      "llmSupportImage": true,
+      "defaultConfig": {
+        "topK": 40,
+        "topP": 0.95,
+        "temperature": 0.7,
+        "maxTokens": 2048,
+        "accelerators": "gpu,cpu"
+      },
+      "taskTypes": [
+        "llm_chat",
+        "llm_prompt_lab",
+        "llm_ask_image"
+      ]
+    },
+    {
       "name": "Gemma-3n-E2B-it-int4",
       "modelId": "google/gemma-3n-E2B-it-litert-preview",
       "modelFile": "gemma-3n-E2B-it-int4.task",
@@ -16,7 +60,11 @@
         "maxTokens": 4096,
         "accelerators": "cpu,gpu"
       },
-      "taskTypes": ["llm_chat", "llm_prompt_lab", "llm_ask_image"]
+      "taskTypes": [
+        "llm_chat",
+        "llm_prompt_lab",
+        "llm_ask_image"
+      ]
     },
     {
       "name": "Gemma-3n-E4B-it-int4",
@@ -34,7 +82,11 @@
         "maxTokens": 4096,
         "accelerators": "cpu,gpu"
       },
-      "taskTypes": ["llm_chat", "llm_prompt_lab", "llm_ask_image"]
+      "taskTypes": [
+        "llm_chat",
+        "llm_prompt_lab",
+        "llm_ask_image"
+      ]
     },
     {
       "name": "Gemma3-1B-IT q4",
@@ -51,7 +103,10 @@
         "maxTokens": 1024,
         "accelerators": "gpu,cpu"
       },
-      "taskTypes": ["llm_chat", "llm_prompt_lab"]
+      "taskTypes": [
+        "llm_chat",
+        "llm_prompt_lab"
+      ]
     },
     {
       "name": "Qwen2.5-1.5B-Instruct q8",
@@ -68,7 +123,10 @@
         "maxTokens": 1024,
         "accelerators": "cpu"
       },
-      "taskTypes": ["llm_chat", "llm_prompt_lab"]
+      "taskTypes": [
+        "llm_chat",
+        "llm_prompt_lab"
+      ]
     }
   ]
 }

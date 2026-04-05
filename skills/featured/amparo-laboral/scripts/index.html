@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AmparoIA — Registro de Incidentes</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f172a; color: #e2e8f0;
+    padding: 16px; min-height: 100vh;
+  }
+  .header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 20px; padding-bottom: 16px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .logo { font-size: 24px; }
+  .title { font-size: 18px; font-weight: 700; color: #00d4aa; }
+  .subtitle { font-size: 12px; color: #64748b; }
+  .card {
+    background: #1e293b; border-radius: 12px;
+    padding: 16px; margin-bottom: 12px;
+    border: 1px solid #334155;
+  }
+  .card-date { font-size: 12px; color: #00d4aa; font-weight: 600; margin-bottom: 6px; }
+  .card-desc { font-size: 14px; color: #cbd5e1; line-height: 1.5; margin-bottom: 10px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .tag {
+    background: #0f2744; color: #7dd3fc;
+    padding: 3px 8px; border-radius: 20px; font-size: 11px;
+  }
+  .severity {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: #94a3b8;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .sev-1 { background: #22c55e; }
+  .sev-2 { background: #84cc16; }
+  .sev-3 { background: #f59e0b; }
+  .sev-4 { background: #f97316; }
+  .sev-5 { background: #ef4444; }
+  .empty {
+    text-align: center; padding: 40px 20px;
+    color: #475569; font-size: 14px;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; margin-bottom: 20px;
+  }
+  .stat {
+    background: #1e293b; border-radius: 10px;
+    padding: 12px; text-align: center;
+    border: 1px solid #334155;
+  }
+  .stat-value { font-size: 24px; font-weight: 700; color: #00d4aa; }
+  .stat-label { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .export-btn {
+    width: 100%; padding: 12px;
+    background: #00d4aa; color: #0f172a;
+    border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; margin-top: 16px;
+  }
+  .export-btn:hover { background: #00b894; }
+  .section-title {
+    font-size: 13px; font-weight: 600;
+    color: #475569; text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 12px;
+  }
+  pre {
+    background: #0f172a; border: 1px solid #334155;
+    border-radius: 8px; padding: 12px;
+    font-size: 11px; color: #94a3b8;
+    white-space: pre-wrap; word-break: break-all;
+    max-height: 300px; overflow-y: auto;
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">🛡️</div>
+  <div>
+    <div class="title">AmparoIA</div>
+    <div class="subtitle">Registro de Incidentes</div>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<script>
+const STORAGE_KEY = 'amparoia_incidents';
+
+function getIncidents() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveIncidents(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
+function parseDate(dateStr) {
+  if (!dateStr || dateStr === 'today') return new Date().toISOString().split('T')[0];
+  if (dateStr === 'yesterday') {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  }
+  return dateStr;
+}
+
+function severityColor(s) {
+  return ['','sev-1','sev-2','sev-3','sev-4','sev-5'][s] || 'sev-3';
+}
+function severityLabel(s) {
+  return ['','Muy leve','Leve','Moderado','Severo','Crítico'][s] || 'Moderado';
+}
+
+function handleAction(data) {
+  const incidents = getIncidents();
+
+  if (data.action === 'log_incident') {
+    const newIncident = {
+      id: Date.now().toString(),
+      date: parseDate(data.date),
+      description: data.description || '',
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      severity: Math.min(5, Math.max(1, parseInt(data.severity) || 3)),
+      createdAt: new Date().toISOString()
+    };
+    incidents.unshift(newIncident);
+    saveIncidents(incidents);
+    return {
+      success: true,
+      message: `Incidente registrado el ${newIncident.date}. Total registros: ${incidents.length}.`,
+      incident: newIncident
+    };
+  }
+
+  if (data.action === 'get_incidents') {
+    const days = parseInt(data.days) || 30;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const filtered = incidents.filter(i => new Date(i.date) >= cutoff);
+    return {
+      success: true,
+      total: incidents.length,
+      period_days: days,
+      incidents_in_period: filtered.length,
+      incidents: filtered
+    };
+  }
+
+  if (data.action === 'export_incidents') {
+    let text = 'REGISTRO DE INCIDENTES — AmparoIA\n';
+    text += '=====================================\n';
+    text += `Exportado: ${new Date().toLocaleString('es-AR')}\n`;
+    text += `Total de incidentes: ${incidents.length}\n\n`;
+    incidents.forEach((inc, i) => {
+      text += `--- Incidente ${i + 1} ---\n`;
+      text += `Fecha: ${inc.date}\n`;
+      text += `Severidad: ${severityLabel(inc.severity)} (${inc.severity}/5)\n`;
+      text += `Descripción: ${inc.description}\n`;
+      if (inc.tags.length > 0) text += `Categorías: ${inc.tags.join(', ')}\n`;
+      text += '\n';
+    });
+    return { success: true, export_text: text, total: incidents.length };
+  }
+
+  if (data.action === 'wipe_incidents') {
+    saveIncidents([]);
+    return { success: true, message: 'Todos los incidentes fueron eliminados.' };
+  }
+
+  return { success: false, error: 'Acción no reconocida: ' + data.action };
+}
+
+function renderStats(incidents) {
+  const total = incidents.length;
+  const thisMonth = incidents.filter(i => {
+    const d = new Date(i.date);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  const avgSev = total > 0
+    ? (incidents.reduce((s, i) => s + i.severity, 0) / total).toFixed(1)
+    : '0';
+
+  return `
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">${total}</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">${thisMonth}</div>
+        <div class="stat-label">Este mes</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">${avgSev}</div>
+        <div class="stat-label">Severidad media</div>
+      </div>
+    </div>`;
+}
+
+function renderIncidents(incidents) {
+  if (incidents.length === 0) {
+    return `
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <div>Sin incidentes registrados</div>
+        <div style="font-size:12px;margin-top:8px">Pedile al asistente que registre un incidente cuando lo necesites</div>
+      </div>`;
+  }
+
+  return incidents.map(inc => `
+    <div class="card">
+      <div class="card-date">📅 ${inc.date}</div>
+      <div class="card-desc">${inc.description}</div>
+      ${inc.tags.length > 0 ? `<div class="tags">${inc.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>` : ''}
+      <div class="severity">
+        <div class="dot ${severityColor(inc.severity)}"></div>
+        ${severityLabel(inc.severity)}
+      </div>
+    </div>`).join('');
+}
+
+function render(result) {
+  const root = document.getElementById('root');
+
+  if (result && result.export_text) {
+    root.innerHTML = `
+      <div class="section-title">Exportar para abogado / denuncia</div>
+      <pre>${result.export_text}</pre>
+      <button class="export-btn" onclick="copyExport()">📋 Copiar texto</button>`;
+    window._exportText = result.export_text;
+    return;
+  }
+
+  const incidents = getIncidents();
+  root.innerHTML = `
+    ${renderStats(incidents)}
+    <div class="section-title">Incidentes recientes</div>
+    ${renderIncidents(incidents.slice(0, 20))}`;
+}
+
+window.copyExport = function() {
+  navigator.clipboard.writeText(window._exportText || '')
+    .then(() => alert('Copiado al portapapeles'))
+    .catch(() => alert('No se pudo copiar. Seleccioná el texto manualmente.'));
+};
+
+// Punto de entrada: recibe datos del modelo
+window.onload = function() {
+  const params = new URLSearchParams(window.location.search);
+  const dataStr = params.get('data') || window.skillData || '{}';
+  let data = {};
+  try { data = JSON.parse(decodeURIComponent(dataStr)); } catch {}
+
+  if (data.action) {
+    const result = handleAction(data);
+    render(result);
+    // Devolver resultado al modelo
+    if (window.onSkillResult) window.onSkillResult(JSON.stringify(result));
+  } else {
+    render(null);
+  }
+};
+</script>
+</body>
+</html>
