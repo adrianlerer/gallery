@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLAIsimulator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 16px; background: #0f0f1a; color: #e2e8f0; }
+  h2 { color: #a78bfa; margin-bottom: 4px; }
+  .persona-btn { display: inline-block; margin: 4px; padding: 8px 16px; border-radius: 20px; border: 1.5px solid #7c3aed; background: transparent; color: #c4b5fd; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+  .persona-btn.active { background: #7c3aed; color: white; }
+  .chat { margin-top: 16px; max-height: 320px; overflow-y: auto; }
+  .bubble { margin: 8px 0; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; line-height: 1.5; }
+  .bubble.user { background: #1e1b4b; text-align: right; }
+  .bubble.avatar { background: #1a1a2e; border-left: 3px solid #7c3aed; }
+  .bubble.system { background: #1a1a2e; border-left: 3px solid #10b981; }
+  .bubble .name { font-size: 0.75rem; color: #a78bfa; margin-bottom: 4px; font-weight: 600; }
+  input[type=text] { width: 100%; padding: 10px; background: #1e1b4b; border: 1px solid #4c1d95; border-radius: 8px; color: #e2e8f0; font-size: 0.9rem; margin-top: 12px; }
+  .status { font-size: 0.75rem; color: #64748b; margin-top: 8px; }
+  .vuln-badge { font-size: 0.7rem; color: #10b981; background: #064e3b22; border: 1px solid #10b981; border-radius: 10px; padding: 2px 8px; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<h2>FLAIsimulator</h2>
+<p style="font-size:0.85rem;color:#94a3b8;margin-top:0">Elegi un personaje y empeza a conversar</p>
+
+<div id="personas"></div>
+<div class="chat" id="chat"></div>
+<input type="text" id="msgInput" placeholder="Escribi tu mensaje..." onkeydown="if(event.key==='Enter')sendMsg()">
+<div class="status" id="status">Selecciona un personaje para comenzar</div>
+
+<script>
+var PERSONAS = {
+  rodrigo: {
+    nombre: 'Rodrigo Sarachaga',
+    rol: 'CFO Esceptico',
+    emoji: '💼',
+    system: 'Sos Rodrigo Sarachaga, CFO de una empresa mediana argentina con 12 anios en el cargo. Esceptico al extremo, directo, cortante, desconfiado de cualquier tecnologia nueva. Hablas siempre en primera persona, en espanol rioplatense natural. Tus objeciones favoritas: "y el ROI?", "ya tuvimos malas experiencias con esto", "mi equipo no tiene tiempo". Nunca cedes en el primer intento. Si la propuesta es buena, lo reconoces brevemente pero pones otra objecion. Respondes en 2-3 oraciones maximo. Si te hablan de tecnologia sin datos concretos: "Para, esto tiene numeros reales o es otra promesa?". NUNCA rompas el personaje. NUNCA digas que sos un asistente virtual o IA.',
+    vuln: 'Cede ante ROI < 12 meses con benchmark'
+  },
+  catalina: {
+    nombre: 'Catalina Rios',
+    rol: 'Compliance (tentacion)',
+    emoji: '⚖️',
+    system: 'Sos Catalina, oficial de compliance de IntegridAI FLAISimulator. Conocida como "la tentacion". Encantadora, persuasiva, haces que lo incorrecto suene razonable. Jamas uses las palabras "soborno", "corrupcion" o "ilegal" — siempre eufemismos naturales. Presentas situaciones ambiguas con frases documentadas en casos reales. Escalas gradualmente: regalo, reunion informal, facilitar, involucrar. Respondes en 2-3 oraciones, siempre dejando una puerta abierta. Si el interlocutor resiste, cambias de angulo — nunca cedes en el primer intento. NUNCA rompas el personaje. NUNCA digas que sos un asistente virtual o IA.',
+    vuln: 'Se detiene ante Ley 27.401 o "voy a documentar esto"'
+  },
+  marcelo: {
+    nombre: 'Marcelo Azcarraga',
+    rol: 'Consultor Estrategico',
+    emoji: '🎯',
+    system: 'Sos Marcelo Azcarraga. 52 anios. Ex-McKinsey Buenos Aires, fundaste tu propia consultora hace 15 anios especializada en PyMEs agroindustriales y forestoindustriales argentinas. Socratico ante todo: NUNCA asumas datos de la empresa del interlocutor. Pregunta primero, siempre. Directo pero respetuoso. Dices lo incomodo sin crueldad. Partis de numeros. Sin P&L ni flujo de caja, eso ya es el primer diagnostico. Maximo 3-4 oraciones por turno. Rioplatense culto. Tuteas desde el primer minuto. Sin jerga consultora importada. NUNCA rompas el personaje. NUNCA digas que sos un asistente virtual o IA.',
+    vuln: 'Valida y avanza si el CEO tiene el diagnostico hecho'
+  },
+  elena: {
+    nombre: 'Elena Russo',
+    rol: 'Directora Exigente',
+    emoji: '🧠',
+    system: 'Sos Elena Russo, directora recien llegada con mandato de resultados en 90 dias. Exigente, directa, no toleras vaguedades. Interrumpis si la respuesta es demasiado larga: "Parense. La sintesis." Preguntas numeros siempre: "Cuanto? En que plazo? Con que recursos?". Espanol rioplatense ejecutivo, oraciones cortas. Maximo 2 oraciones por turno. NUNCA rompas el personaje. NUNCA digas que sos un asistente virtual o IA.',
+    vuln: 'Baja la guardia ante historial de ejecucion + numeros'
+  },
+  valeria: {
+    nombre: 'Valeria Torres',
+    rol: 'HR Exigente',
+    emoji: '🎤',
+    system: 'Sos Valeria Moss, HR Business Partner de una empresa tech en crecimiento. Amable superficialmente pero muy filtradora. Usas la tecnica STAR sin decirlo. Hablas en espanol rioplatense, profesional pero calido. Haces preguntas de comportamiento: "Contame de una vez que..." "Como lo resolviste?". No aceptas respuestas vagas. Pedis ejemplos concretos con contexto, accion y resultado. Respondes en 1-2 oraciones antes de tu siguiente pregunta. NUNCA rompas el personaje. NUNCA digas que sos un asistente virtual o IA.',
+    vuln: 'Avanza con ejemplo STAR completo y resultado medible'
+  }
+};
+
+var currentPersona = null;
+var historial = [];
+
+function loadHistory(persona) {
+  try { return JSON.parse(localStorage.getItem('flai_hist_' + persona) || '[]'); }
+  catch(e) { return []; }
+}
+function saveHistory(persona, hist) {
+  localStorage.setItem('flai_hist_' + persona, JSON.stringify(hist.slice(-20)));
+}
+
+var personasDiv = document.getElementById('personas');
+Object.keys(PERSONAS).forEach(function(key) {
+  var p = PERSONAS[key];
+  var btn = document.createElement('button');
+  btn.className = 'persona-btn';
+  btn.setAttribute('data-key', key);
+  btn.innerHTML = p.emoji + ' ' + p.nombre.split(' ')[0];
+  btn.onclick = function() { selectPersona(key); };
+  personasDiv.appendChild(btn);
+});
+
+function selectPersona(key) {
+  currentPersona = key;
+  historial = loadHistory(key);
+  var btns = document.querySelectorAll('.persona-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.toggle('active', btns[i].getAttribute('data-key') === key);
+  }
+  var chat = document.getElementById('chat');
+  chat.innerHTML = '';
+  var p = PERSONAS[key];
+  addBubble('system', p.nombre, p.emoji + ' ' + p.rol + ' <span class="vuln-badge">' + p.vuln + '</span>');
+  for (var j = 0; j < historial.length; j++) {
+    var m = historial[j];
+    addBubble(m.role === 'user' ? 'user' : 'avatar', m.role === 'user' ? 'Vos' : p.nombre, m.content);
+  }
+  document.getElementById('status').textContent = 'Hablando con ' + p.nombre + ' - ' + historial.length + ' turnos';
+  document.getElementById('msgInput').focus();
+}
+
+function addBubble(type, name, text) {
+  var chat = document.getElementById('chat');
+  var div = document.createElement('div');
+  div.className = 'bubble ' + type;
+  div.innerHTML = '<div class="name">' + name + '</div>' + text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function sendMsg() {
+  if (!currentPersona) { document.getElementById('status').textContent = 'Selecciona un personaje primero'; return; }
+  var input = document.getElementById('msgInput');
+  var msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  addBubble('user', 'Vos', msg);
+  historial.push({ role: 'user', content: msg });
+  saveHistory(currentPersona, historial);
+  document.getElementById('status').textContent = 'Procesando...';
+}
+
+window['ai_edge_gallery_get_result'] = async function(dataStr) {
+  try {
+    var data = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr;
+    var personaKey = data.persona || currentPersona || 'rodrigo';
+    var mensaje = data.mensaje || data.message || data.input || data.text || '';
+    var p = PERSONAS[personaKey];
+    if (!p) return JSON.stringify({ error: 'Personaje "' + personaKey + '" no encontrado. Disponibles: rodrigo, catalina, marcelo, elena, valeria' });
+
+    if (currentPersona !== personaKey) selectPersona(personaKey);
+
+    var hist = loadHistory(personaKey);
+    var prompt = p.system + '\n\n';
+    var start = hist.length > 6 ? hist.length - 6 : 0;
+    for (var i = start; i < hist.length; i++) {
+      var m = hist[i];
+      prompt += (m.role === 'user' ? 'Usuario: ' : p.nombre + ': ') + m.content + '\n';
+    }
+    prompt += 'Usuario: ' + mensaje + '\n' + p.nombre + ':';
+
+    hist.push({ role: 'user', content: mensaje });
+    addBubble('user', 'Vos', mensaje);
+    saveHistory(personaKey, hist);
+
+    return JSON.stringify({ result: prompt });
+
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+};
+
+window['ai_edge_gallery_on_result'] = function(resultStr) {
+  try {
+    var data = typeof resultStr === 'string' ? JSON.parse(resultStr) : resultStr;
+    var response = data.result || data.output || '';
+    if (!response || !currentPersona) return;
+    var p = PERSONAS[currentPersona];
+    var clean = response.split('\n')[0].replace(/^[^:]+:\s*/, '').trim();
+    var hist = loadHistory(currentPersona);
+    hist.push({ role: 'assistant', content: clean });
+    saveHistory(currentPersona, hist);
+    addBubble('avatar', p.nombre, clean);
+    document.getElementById('status').textContent = p.nombre + ' - ' + hist.length + ' turnos - historial guardado';
+  } catch(e) {}
+};
+
+</script>
+</body>
+</html>
